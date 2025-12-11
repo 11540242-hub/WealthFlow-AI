@@ -185,7 +185,9 @@ const StocksView: React.FC<StocksViewProps> = ({ stocks, onUpdateStocks }) => {
                 {stocks.map(stock => {
                     const mktValue = stock.quantity * stock.currentPrice;
                     const gain = mktValue - (stock.quantity * stock.avgCost);
-                    const gainPercent = (gain / (stock.quantity * stock.avgCost)) * 100;
+                    const gainPercent = (stock.quantity * stock.avgCost) > 0 
+                      ? (gain / (stock.quantity * stock.avgCost)) * 100 
+                      : 0;
 
                     return (
                         <tr key={stock.id} className="hover:bg-slate-50">

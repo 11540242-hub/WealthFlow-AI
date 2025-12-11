@@ -1,8 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { Stock, StockUpdateResult } from "../types";
 
-// Ensure API Key is present
-const API_KEY = process.env.API_KEY;
+// Ensure API Key is present. Check multiple sources for compatibility (Env var, React App, Vite)
+const API_KEY = process.env.API_KEY || process.env.REACT_APP_GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
 
 // Initialize Gemini
 let ai: GoogleGenAI | null = null;
@@ -22,9 +22,13 @@ export const fetchStockUpdates = async (stocks: Stock[]): Promise<StockUpdateRes
 
   const symbols = stocks.map(s => s.symbol).join(", ");
   const prompt = `Find the current stock price for these symbols: ${symbols}. 
-  Return the result as a JSON array of objects where each object has "symbol", "price", and "currency".
-  If it is a Taiwan stock (ending in .TW), assume TWD. If US stock, assume USD.
-  Do not use markdown formatting.`;
+  I need the output strictly as a raw JSON array of objects.
+  Each object must have:
+  - "symbol" (string, the exact symbol requested)
+  - "price" (number, the current numeric price)
+  - "currency" (string, e.g. "TWD" for Taiwan stocks, "USD" for US stocks)
+  
+  Do not include markdown formatting (like \`\`\`json). Just return the JSON string.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -32,10 +36,12 @@ export const fetchStockUpdates = async (stocks: Stock[]): Promise<StockUpdateRes
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
+        // Note: responseMimeType cannot be used with googleSearch tool
       }
     });
 
     if (response.text) {
+      // Clean up potential markdown just in case
       const text = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(text) as StockUpdateResult[];
     }
